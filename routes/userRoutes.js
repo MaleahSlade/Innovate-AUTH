@@ -1,5 +1,8 @@
 import express from 'express';
 import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
+
+
 const router = express.Router();
 // POST /api/users/register
 router.post('/register', async (req, res) => {
@@ -21,4 +24,30 @@ res.status(201).json(userData);
 res.status(500).json({ message: 'Something went wrong.', error: err.message });
 }
 });
+
+// POST /api/users/login
+router.post('/login', async (req, res) => {
+try {
+const { email, password } = req.body;
+const user = await User.findOne({ email });
+if (!user) {
+return res.status(400).json({ message: 'Incorrect email or password.' });
+}
+const correctPw = await user.isCorrectPassword(password);
+if (!correctPw) {
+return res.status(400).json({ message: 'Incorrect email or password.' });
+}
+const token = jwt.sign(
+{ _id: user._id, username: user.username },
+process.env.JWT_SECRET,
+{ expiresIn: '2h' }
+);
+const userData = user.toObject();
+delete userData.password;
+res.json({ token, user: userData });
+} catch (err) {
+res.status(500).json({ message: 'Something went wrong.', error: err.message });
+}
+});
+
 export default router;
